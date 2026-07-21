@@ -16,6 +16,8 @@
     --neutral-bg: #eceaea;
     --line: #d8d6d0;
     --accent: #3a4a9f;
+    --warn: #a3690f;
+    --warn-bg: #fbeed9;
   }
 
   * { box-sizing: border-box; }
@@ -122,6 +124,7 @@
     color: #a3a2a0;
     letter-spacing: 0.03em;
   }
+  .sync-note.warn { color: var(--warn); font-weight: 600; }
 
   .finished-msg {
     font-size: 1.2rem;
@@ -152,6 +155,18 @@
     align-items: center;
     margin-bottom: 16px;
   }
+
+  .refresh-btn {
+    background: none;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 5px 12px;
+    font-size: 0.78rem;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .refresh-btn:hover { background: var(--accent); color: white; }
+  .refresh-btn:disabled { opacity: 0.5; cursor: wait; }
 
   .columns {
     display: grid;
@@ -275,6 +290,7 @@
 <section id="adminView">
   <div class="admin-top">
     <div class="sync-note" id="syncNoteAdmin">Connecting…</div>
+    <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()">Refresh now</button>
   </div>
   <div class="columns">
     <div class="column col-positive">
@@ -328,6 +344,7 @@
   let votedThisSession = new Set();
   let currentEmotion = null;
   let syncing = false;
+  let consecutiveFetchFailures = 0;
 
   function emptyCounts() {
     return { Positive: 0, Negative: 0, Neutral: 0 };
@@ -349,9 +366,13 @@
     return emotionPool.filter(e => !votedThisSession.has(e));
   }
 
-  function setSyncNote(text) {
-    document.getElementById('syncNote').textContent = text;
-    document.getElementById('syncNoteAdmin').textContent = text;
+  function setSyncNote(text, isWarning) {
+    const a = document.getElementById('syncNote');
+    const b = document.getElementById('syncNoteAdmin');
+    [a, b].forEach(el => {
+      el.textContent = text;
+      el.classList.toggle('warn', !!isWarning);
+    });
   }
 
   function showNextEmotion() {
@@ -377,20 +398,38 @@
     document.querySelectorAll('#choicesBox .choice-link').forEach(btn => btn.disabled = !enabled);
   }
 
+  // Returns { ok: boolean, data: object|null }.
+  // ok=false means the read genuinely failed (network/storage issue) —
+  // callers should NOT treat that as "no votes exist" and wipe the display.
+  // ok=true with an empty object is the normal "nothing stored yet" case.
   async function fetchShared() {
     try {
       const result = await window.storage.get(STORAGE_KEY, true);
-      return result ? JSON.parse(result.value) : {};
+      if (!result || result.value === undefined || result.value === null) {
+        return { ok: true, data: {} };
+      }
+      // Be defensive: value should be a JSON string, but handle the case
+      // where it's already been parsed into an object for us.
+      let data;
+      if (typeof result.value === 'string') {
+        data = result.value.trim() === '' ? {} : JSON.parse(result.value);
+      } else {
+        data = result.value;
+      }
+      if (!data || typeof data !== 'object') data = {};
+      return { ok: true, data };
     } catch (e) {
-      // Key doesn't exist yet (nobody has voted on anything)
-      return {};
+      // This fires both when the key has never been created (expected on
+      // a brand-new page) AND on genuine read errors. We can't tell those
+      // apart from the error alone, so we let the caller decide what to do.
+      return { ok: false, data: null, error: e };
     }
   }
 
   async function saveShared(obj) {
     try {
-      await window.storage.set(STORAGE_KEY, JSON.stringify(obj), true);
-      return true;
+      const result = await window.storage.set(STORAGE_KEY, JSON.stringify(obj), true);
+      return !!result;
     } catch (e) {
       console.error('Storage write failed', e);
       return false;
@@ -413,17 +452,19 @@
 
     // Merge with the latest shared tally before writing, so two people
     // voting at nearly the same moment don't erase each other's vote
-    const latest = await fetchShared();
+    const fetched = await fetchShared();
+    const latest = fetched.ok ? fetched.data : { ...votes };
     const latestCounts = latest[emotion] || emptyCounts();
     latestCounts[category] += 1;
     latest[emotion] = latestCounts;
 
-    const ok = await saveShared(latest);
-    if (ok) {
+    const saved = await saveShared(latest);
+    if (saved) {
       votes = latest;
+      consecutiveFetchFailures = 0;
       setSyncNote('Synced ' + new Date().toLocaleTimeString());
     } else {
-      setSyncNote('Sync failed — will retry shortly');
+      setSyncNote('Vote saved locally — retrying sync…', true);
     }
     renderDashboard();
     syncing = false;
@@ -482,6 +523,38 @@
     }
   }
 
+  // Explicitly pulls the freshest shared data BEFORE rendering, rather than
+  // trusting whatever happens to already be in memory. This is what runs
+  // when the admin dashboard is opened, and on manual refresh.
+  async function syncThenRender() {
+    setSyncNote('Syncing latest results…');
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) refreshBtn.disabled = true;
+
+    const fetched = await fetchShared();
+    if (fetched.ok) {
+      votes = fetched.data;
+      consecutiveFetchFailures = 0;
+      setSyncNote('Synced ' + new Date().toLocaleTimeString());
+    } else {
+      consecutiveFetchFailures += 1;
+      // Only ever treat this as "genuinely empty" on the very first load,
+      // where there's no prior data to protect. Otherwise keep showing
+      // whatever we already had rather than blanking the dashboard.
+      if (Object.keys(votes).length === 0) {
+        votes = {};
+      }
+      setSyncNote('Could not reach shared storage — showing last known results', true);
+    }
+    renderDashboard();
+
+    if (refreshBtn) refreshBtn.disabled = false;
+  }
+
+  function manualRefresh() {
+    syncThenRender();
+  }
+
   function toggleView() {
     const sorter = document.getElementById('sorterView');
     const admin = document.getElementById('adminView');
@@ -496,13 +569,23 @@
       admin.style.display = 'block';
       sorter.style.display = 'none';
       btn.textContent = 'Back to sorting';
-      renderDashboard();
+      syncThenRender(); // fetch latest FIRST, then classify/render
     }
   }
 
-  // Poll shared storage so every open tab/browser stays in sync live
+  // Poll shared storage in the background so every open tab/browser stays
+  // in sync live. Never blanks existing data on a failed read.
   async function pollShared() {
-    const remote = await fetchShared();
+    const fetched = await fetchShared();
+    if (!fetched.ok) {
+      consecutiveFetchFailures += 1;
+      if (consecutiveFetchFailures >= 3) {
+        setSyncNote('Having trouble syncing — will keep retrying', true);
+      }
+      return; // leave existing votes/display untouched
+    }
+    consecutiveFetchFailures = 0;
+    const remote = fetched.data;
     if (JSON.stringify(remote) !== JSON.stringify(votes)) {
       votes = remote;
       renderDashboard();
@@ -512,10 +595,11 @@
 
   // init
   (async function init() {
-    votes = await fetchShared();
+    const fetched = await fetchShared();
+    votes = fetched.ok ? fetched.data : {};
     showNextEmotion();
     renderDashboard();
-    setSyncNote('Synced ' + new Date().toLocaleTimeString());
+    setSyncNote(fetched.ok ? 'Synced ' + new Date().toLocaleTimeString() : 'Starting fresh — no votes yet', false);
     setInterval(pollShared, POLL_MS);
   })();
 </script>
