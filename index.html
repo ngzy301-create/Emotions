@@ -104,6 +104,7 @@
   }
   .choice-link:hover { transform: translateY(-2px); }
   .choice-link:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .choice-link:disabled { opacity: 0.5; cursor: wait; transform: none; }
 
   .choice-positive { background: var(--positive-bg); color: var(--positive); }
   .choice-negative { background: var(--negative-bg); color: var(--negative); }
@@ -113,6 +114,13 @@
     margin-top: 40px;
     font-size: 0.85rem;
     color: var(--neutral);
+  }
+
+  .sync-note {
+    margin-top: 6px;
+    font-size: 0.72rem;
+    color: #a3a2a0;
+    letter-spacing: 0.03em;
   }
 
   .finished-msg {
@@ -136,6 +144,13 @@
     width: 100%;
     max-width: 900px;
     display: none;
+  }
+
+  .admin-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
   }
 
   .columns {
@@ -177,11 +192,34 @@
   .col-neutral .count-badge  { background: var(--neutral-bg); color: var(--neutral); }
 
   .emotion-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 8px 10px;
     font-size: 0.9rem;
     border-bottom: 1px solid var(--line);
+    gap: 8px;
   }
   .emotion-item:last-child { border-bottom: none; }
+
+  .emotion-name { display: flex; align-items: center; gap: 6px; }
+
+  .tie-flag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: white;
+    background: var(--accent);
+    padding: 1px 6px;
+    border-radius: 999px;
+    letter-spacing: 0.03em;
+  }
+
+  .vote-tally {
+    font-size: 0.75rem;
+    color: #8a8a8a;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
 
   .empty-note {
     font-size: 0.85rem;
@@ -231,9 +269,13 @@
   </div>
 
   <div class="progress" id="progressNote"></div>
+  <div class="sync-note" id="syncNote">Connecting…</div>
 </section>
 
 <section id="adminView">
+  <div class="admin-top">
+    <div class="sync-note" id="syncNoteAdmin">Connecting…</div>
+  </div>
   <div class="columns">
     <div class="column col-positive">
       <div class="column-header">
@@ -258,7 +300,7 @@
     </div>
   </div>
   <div class="admin-footer">
-    <button class="reset-btn" onclick="resetAll()">Reset all classifications</button>
+    <button class="reset-btn" onclick="resetAll()">Reset all votes</button>
   </div>
 </section>
 
@@ -273,70 +315,168 @@
     "Anger", "Frustration", "Resentment", "Confusion", "Love"
   ];
 
-  // In-memory state: { emotion: "Positive" | "Negative" | "Neutral" }
-  let classifications = {};
-  let queue = [...emotionPool];
+  const STORAGE_KEY = 'votes';
+  const POLL_MS = 2500;
+  const CATEGORIES = ['Positive', 'Negative', 'Neutral'];
+
+  // Shared truth, synced with every other user of this page:
+  // { emotion: { Positive: n, Negative: n, Neutral: n } }
+  let votes = {};
+
+  // This browser's own progress through the list (not shared) so the
+  // same person isn't asked to vote on the same emotion twice in one visit.
+  let votedThisSession = new Set();
   let currentEmotion = null;
+  let syncing = false;
+
+  function emptyCounts() {
+    return { Positive: 0, Negative: 0, Neutral: 0 };
+  }
+
+  function getCounts(emotion) {
+    return votes[emotion] || emptyCounts();
+  }
+
+  function getMajority(counts) {
+    const total = counts.Positive + counts.Negative + counts.Neutral;
+    if (total === 0) return null;
+    const max = Math.max(counts.Positive, counts.Negative, counts.Neutral);
+    const top = CATEGORIES.filter(c => counts[c] === max);
+    return { category: top[0], tied: top.length > 1, total };
+  }
+
+  function getRemainingQueue() {
+    return emotionPool.filter(e => !votedThisSession.has(e));
+  }
+
+  function setSyncNote(text) {
+    document.getElementById('syncNote').textContent = text;
+    document.getElementById('syncNoteAdmin').textContent = text;
+  }
 
   function showNextEmotion() {
-    if (queue.length === 0) {
+    const remaining = getRemainingQueue();
+    if (remaining.length === 0) {
       document.getElementById('emotionWord').innerHTML =
-        '<span class="finished-msg">All emotions sorted.<br><button class="again" onclick="restartQueue()">Sort again</button></span>';
+        '<span class="finished-msg">You\'ve voted on every emotion.<br>' +
+        '<button class="again" onclick="restartSession()">Vote through them again</button></span>';
       document.getElementById('choicesBox').style.display = 'none';
       document.getElementById('progressNote').textContent = '';
       currentEmotion = null;
       return;
     }
     document.getElementById('choicesBox').style.display = 'flex';
-    currentEmotion = queue[0];
+    currentEmotion = remaining[0];
     document.getElementById('emotionWord').textContent = currentEmotion;
-    const remaining = queue.length;
     const total = emotionPool.length;
     document.getElementById('progressNote').textContent =
-      `${total - remaining + 1} of ${total}`;
+      `${total - remaining.length + 1} of ${total} · your progress`;
   }
 
-  function classify(category) {
-    if (!currentEmotion) return;
-    classifications[currentEmotion] = category;
-    queue.shift();
+  function setChoicesEnabled(enabled) {
+    document.querySelectorAll('#choicesBox .choice-link').forEach(btn => btn.disabled = !enabled);
+  }
+
+  async function fetchShared() {
+    try {
+      const result = await window.storage.get(STORAGE_KEY, true);
+      return result ? JSON.parse(result.value) : {};
+    } catch (e) {
+      // Key doesn't exist yet (nobody has voted on anything)
+      return {};
+    }
+  }
+
+  async function saveShared(obj) {
+    try {
+      await window.storage.set(STORAGE_KEY, JSON.stringify(obj), true);
+      return true;
+    } catch (e) {
+      console.error('Storage write failed', e);
+      return false;
+    }
+  }
+
+  async function classify(category) {
+    if (!currentEmotion || syncing) return;
+    const emotion = currentEmotion;
+    syncing = true;
+    setChoicesEnabled(false);
+
+    // Optimistic local bump so the vote feels instant
+    const localCounts = { ...getCounts(emotion) };
+    localCounts[category] += 1;
+    votes[emotion] = localCounts;
+    votedThisSession.add(emotion);
     showNextEmotion();
     renderDashboard();
+
+    // Merge with the latest shared tally before writing, so two people
+    // voting at nearly the same moment don't erase each other's vote
+    const latest = await fetchShared();
+    const latestCounts = latest[emotion] || emptyCounts();
+    latestCounts[category] += 1;
+    latest[emotion] = latestCounts;
+
+    const ok = await saveShared(latest);
+    if (ok) {
+      votes = latest;
+      setSyncNote('Synced ' + new Date().toLocaleTimeString());
+    } else {
+      setSyncNote('Sync failed — will retry shortly');
+    }
+    renderDashboard();
+    syncing = false;
+    setChoicesEnabled(true);
   }
 
-  function restartQueue() {
-    queue = [...emotionPool];
+  function restartSession() {
+    votedThisSession = new Set();
     showNextEmotion();
   }
 
-  function resetAll() {
-    const entered = prompt("Enter admin password to reset all classifications:");
+  async function resetAll() {
+    const entered = prompt("Enter admin password to reset all votes:");
     if (entered === null) return; // cancelled
     if (entered !== "admin") {
       alert("Incorrect password. Reset cancelled.");
       return;
     }
-    classifications = {};
-    restartQueue();
+    votes = {};
+    votedThisSession = new Set();
+    await saveShared({});
+    showNextEmotion();
     renderDashboard();
+    setSyncNote('Reset ' + new Date().toLocaleTimeString());
   }
 
   function renderDashboard() {
     const buckets = { Positive: [], Negative: [], Neutral: [] };
-    for (const [emotion, category] of Object.entries(classifications)) {
-      buckets[category].push(emotion);
+
+    for (const emotion of Object.keys(votes)) {
+      const counts = getCounts(emotion);
+      const result = getMajority(counts);
+      if (!result) continue;
+      buckets[result.category].push({ emotion, counts, tied: result.tied });
     }
 
-    for (const category of ['Positive', 'Negative', 'Neutral']) {
+    for (const category of CATEGORIES) {
       const listEl = document.getElementById('list' + category);
       const countEl = document.getElementById('count' + category);
-      countEl.textContent = buckets[category].length;
+      const items = buckets[category];
+      countEl.textContent = items.length;
 
-      if (buckets[category].length === 0) {
-        listEl.innerHTML = '<div class="empty-note">Nothing classified here yet.</div>';
+      if (items.length === 0) {
+        listEl.innerHTML = '<div class="empty-note">Nothing here yet.</div>';
       } else {
-        listEl.innerHTML = buckets[category]
-          .map(e => `<div class="emotion-item">${e}</div>`)
+        listEl.innerHTML = items
+          .sort((a, b) => a.emotion.localeCompare(b.emotion))
+          .map(item => `
+            <div class="emotion-item">
+              <span class="emotion-name">${item.emotion}${item.tied ? '<span class="tie-flag">tie</span>' : ''}</span>
+              <span class="vote-tally">${item.counts.Positive}-${item.counts.Negative}-${item.counts.Neutral}</span>
+            </div>
+          `)
           .join('');
       }
     }
@@ -360,9 +500,24 @@
     }
   }
 
+  // Poll shared storage so every open tab/browser stays in sync live
+  async function pollShared() {
+    const remote = await fetchShared();
+    if (JSON.stringify(remote) !== JSON.stringify(votes)) {
+      votes = remote;
+      renderDashboard();
+    }
+    setSyncNote('Synced ' + new Date().toLocaleTimeString());
+  }
+
   // init
-  showNextEmotion();
-  renderDashboard();
+  (async function init() {
+    votes = await fetchShared();
+    showNextEmotion();
+    renderDashboard();
+    setSyncNote('Synced ' + new Date().toLocaleTimeString());
+    setInterval(pollShared, POLL_MS);
+  })();
 </script>
 
 </body>
