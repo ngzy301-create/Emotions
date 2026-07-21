@@ -17,7 +17,6 @@
     --line: #d8d6d0;
     --accent: #3a4a9f;
     --warn: #a3690f;
-    --warn-bg: #fbeed9;
   }
 
   * { box-sizing: border-box; }
@@ -45,11 +44,7 @@
     padding-bottom: 16px;
   }
 
-  header h1 {
-    font-size: 1.3rem;
-    letter-spacing: 0.02em;
-    margin: 0;
-  }
+  header h1 { font-size: 1.3rem; letter-spacing: 0.02em; margin: 0; }
 
   .view-toggle button {
     background: none;
@@ -62,12 +57,7 @@
   }
   .view-toggle button:hover { background: var(--ink); color: var(--paper); }
 
-  /* ---- Sorter View ---- */
-  #sorterView {
-    width: 100%;
-    max-width: 560px;
-    text-align: center;
-  }
+  #sorterView { width: 100%; max-width: 560px; text-align: center; }
 
   .prompt-label {
     font-size: 0.75rem;
@@ -85,12 +75,7 @@
     min-height: 70px;
   }
 
-  .choices {
-    display: flex;
-    gap: 16px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
+  .choices { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
 
   .choice-link {
     appearance: none;
@@ -112,24 +97,13 @@
   .choice-negative { background: var(--negative-bg); color: var(--negative); }
   .choice-neutral  { background: var(--neutral-bg);  color: var(--neutral); }
 
-  .progress {
-    margin-top: 40px;
-    font-size: 0.85rem;
-    color: var(--neutral);
-  }
+  .progress { margin-top: 40px; font-size: 0.85rem; color: var(--neutral); }
 
-  .sync-note {
-    margin-top: 6px;
-    font-size: 0.72rem;
-    color: #a3a2a0;
-    letter-spacing: 0.03em;
-  }
+  .sync-note { margin-top: 6px; font-size: 0.72rem; color: #a3a2a0; letter-spacing: 0.03em; }
   .sync-note.warn { color: var(--warn); font-weight: 600; }
+  .sync-note.ok { color: var(--positive); }
 
-  .finished-msg {
-    font-size: 1.2rem;
-    color: var(--ink);
-  }
+  .finished-msg { font-size: 1.2rem; color: var(--ink); }
   .finished-msg .again {
     display: inline-block;
     margin-top: 20px;
@@ -142,12 +116,7 @@
     background: none;
   }
 
-  /* ---- Admin View ---- */
-  #adminView {
-    width: 100%;
-    max-width: 900px;
-    display: none;
-  }
+  #adminView { width: 100%; max-width: 900px; display: none; }
 
   .admin-top {
     display: flex;
@@ -156,23 +125,7 @@
     margin-bottom: 16px;
   }
 
-  .refresh-btn {
-    background: none;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    padding: 5px 12px;
-    font-size: 0.78rem;
-    border-radius: 3px;
-    cursor: pointer;
-  }
-  .refresh-btn:hover { background: var(--accent); color: white; }
-  .refresh-btn:disabled { opacity: 0.5; cursor: wait; }
-
-  .columns {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-  }
+  .columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 
   .column {
     background: white;
@@ -192,12 +145,7 @@
   }
 
   .column-header h2 { font-size: 0.95rem; margin: 0; letter-spacing: 0.03em; }
-  .count-badge {
-    font-size: 0.8rem;
-    font-weight: 700;
-    border-radius: 999px;
-    padding: 2px 10px;
-  }
+  .count-badge { font-size: 0.8rem; font-weight: 700; border-radius: 999px; padding: 2px 10px; }
 
   .col-positive .column-header { border-color: var(--positive); }
   .col-positive .count-badge { background: var(--positive-bg); color: var(--positive); }
@@ -216,7 +164,6 @@
     gap: 8px;
   }
   .emotion-item:last-child { border-bottom: none; }
-
   .emotion-name { display: flex; align-items: center; gap: 6px; }
 
   .tie-flag {
@@ -236,16 +183,9 @@
     white-space: nowrap;
   }
 
-  .empty-note {
-    font-size: 0.85rem;
-    color: #999;
-    font-style: italic;
-  }
+  .empty-note { font-size: 0.85rem; color: #999; font-style: italic; }
 
-  .admin-footer {
-    margin-top: 24px;
-    text-align: right;
-  }
+  .admin-footer { margin-top: 24px; text-align: right; }
   .reset-btn {
     background: none;
     border: 1px solid var(--negative);
@@ -275,9 +215,9 @@
 
 <section id="sorterView">
   <div class="prompt-label">How would you classify this emotion?</div>
-  <div class="emotion-word" id="emotionWord"></div>
+  <div class="emotion-word" id="emotionWord">Loading…</div>
 
-  <div class="choices" id="choicesBox">
+  <div class="choices" id="choicesBox" style="display:none;">
     <button class="choice-link choice-positive" onclick="classify('Positive')">Positive</button>
     <button class="choice-link choice-negative" onclick="classify('Negative')">Negative</button>
     <button class="choice-link choice-neutral" onclick="classify('Neutral')">Neutral</button>
@@ -290,28 +230,18 @@
 <section id="adminView">
   <div class="admin-top">
     <div class="sync-note" id="syncNoteAdmin">Connecting…</div>
-    <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()">Refresh now</button>
   </div>
   <div class="columns">
     <div class="column col-positive">
-      <div class="column-header">
-        <h2>Positive</h2>
-        <span class="count-badge" id="countPositive">0</span>
-      </div>
+      <div class="column-header"><h2>Positive</h2><span class="count-badge" id="countPositive">0</span></div>
       <div id="listPositive"></div>
     </div>
     <div class="column col-negative">
-      <div class="column-header">
-        <h2>Negative</h2>
-        <span class="count-badge" id="countNegative">0</span>
-      </div>
+      <div class="column-header"><h2>Negative</h2><span class="count-badge" id="countNegative">0</span></div>
       <div id="listNegative"></div>
     </div>
     <div class="column col-neutral">
-      <div class="column-header">
-        <h2>Neutral</h2>
-        <span class="count-badge" id="countNeutral">0</span>
-      </div>
+      <div class="column-header"><h2>Neutral</h2><span class="count-badge" id="countNeutral">0</span></div>
       <div id="listNeutral"></div>
     </div>
   </div>
@@ -320,8 +250,36 @@
   </div>
 </section>
 
-<script>
-  // Pool of emotions to classify. Edit this list to change what's shown.
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getDatabase, ref, onValue, runTransaction, set
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+  // ======================================================================
+  // STEP 1: Paste your own Firebase project config here.
+  // Firebase console → Project settings → General → "Your apps" → Web app
+  // ======================================================================
+  // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyATOVaAlap9X0Ir31tacKMFAzlwKakkFqs",
+  authDomain: "emotions-59507.firebaseapp.com",
+  databaseURL: "https://emotions-59507-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "emotions-59507",
+  storageBucket: "emotions-59507.firebasestorage.app",
+  messagingSenderId: "1030140508371",
+  appId: "1:1030140508371:web:0a811b843708d95f547c26"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+  // ======================================================================
+
   const emotionPool = [
     "Joy", "Hatred", "Contentment", "Envy", "Relief", "Disappointment",
     "Affection", "Anxiety", "Awe", "Gratitude", "Excitement", "Admiration",
@@ -331,27 +289,35 @@
     "Anger", "Frustration", "Resentment", "Confusion", "Love"
   ];
 
-  const STORAGE_KEY = 'votes';
-  const POLL_MS = 2500;
   const CATEGORIES = ['Positive', 'Negative', 'Neutral'];
 
-  // Shared truth, synced with every other user of this page:
+  let app, db;
+  let firebaseReady = false;
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getDatabase(app);
+    firebaseReady = true;
+  } catch (e) {
+    console.error('Firebase init failed', e);
+  }
+
+  // Shared truth, kept live via a Firebase listener:
   // { emotion: { Positive: n, Negative: n, Neutral: n } }
   let votes = {};
 
-  // This browser's own progress through the list (not shared) so the
-  // same person isn't asked to vote on the same emotion twice in one visit.
+  // This browser's own progress through the list (not shared) so the same
+  // person isn't asked to vote on the same emotion twice in one visit.
   let votedThisSession = new Set();
   let currentEmotion = null;
-  let syncing = false;
-  let consecutiveFetchFailures = 0;
-
-  function emptyCounts() {
-    return { Positive: 0, Negative: 0, Neutral: 0 };
-  }
+  let busy = false;
 
   function getCounts(emotion) {
-    return votes[emotion] || emptyCounts();
+    const raw = (votes && votes[emotion]) || {};
+    return {
+      Positive: raw.Positive || 0,
+      Negative: raw.Negative || 0,
+      Neutral: raw.Neutral || 0
+    };
   }
 
   function getMajority(counts) {
@@ -366,12 +332,13 @@
     return emotionPool.filter(e => !votedThisSession.has(e));
   }
 
-  function setSyncNote(text, isWarning) {
+  function setSyncNote(text, kind) {
     const a = document.getElementById('syncNote');
     const b = document.getElementById('syncNoteAdmin');
     [a, b].forEach(el => {
       el.textContent = text;
-      el.classList.toggle('warn', !!isWarning);
+      el.classList.toggle('warn', kind === 'warn');
+      el.classList.toggle('ok', kind === 'ok');
     });
   }
 
@@ -379,7 +346,7 @@
     const remaining = getRemainingQueue();
     if (remaining.length === 0) {
       document.getElementById('emotionWord').innerHTML =
-        '<span class="finished-msg">You\'ve voted on every emotion.<br>' +
+        "<span class=\"finished-msg\">You've voted on every emotion.<br>" +
         '<button class="again" onclick="restartSession()">Vote through them again</button></span>';
       document.getElementById('choicesBox').style.display = 'none';
       document.getElementById('progressNote').textContent = '';
@@ -398,103 +365,9 @@
     document.querySelectorAll('#choicesBox .choice-link').forEach(btn => btn.disabled = !enabled);
   }
 
-  // Returns { ok: boolean, data: object|null }.
-  // ok=false means the read genuinely failed (network/storage issue) —
-  // callers should NOT treat that as "no votes exist" and wipe the display.
-  // ok=true with an empty object is the normal "nothing stored yet" case.
-  async function fetchShared() {
-    try {
-      const result = await window.storage.get(STORAGE_KEY, true);
-      if (!result || result.value === undefined || result.value === null) {
-        return { ok: true, data: {} };
-      }
-      // Be defensive: value should be a JSON string, but handle the case
-      // where it's already been parsed into an object for us.
-      let data;
-      if (typeof result.value === 'string') {
-        data = result.value.trim() === '' ? {} : JSON.parse(result.value);
-      } else {
-        data = result.value;
-      }
-      if (!data || typeof data !== 'object') data = {};
-      return { ok: true, data };
-    } catch (e) {
-      // This fires both when the key has never been created (expected on
-      // a brand-new page) AND on genuine read errors. We can't tell those
-      // apart from the error alone, so we let the caller decide what to do.
-      return { ok: false, data: null, error: e };
-    }
-  }
-
-  async function saveShared(obj) {
-    try {
-      const result = await window.storage.set(STORAGE_KEY, JSON.stringify(obj), true);
-      return !!result;
-    } catch (e) {
-      console.error('Storage write failed', e);
-      return false;
-    }
-  }
-
-  async function classify(category) {
-    if (!currentEmotion || syncing) return;
-    const emotion = currentEmotion;
-    syncing = true;
-    setChoicesEnabled(false);
-
-    // Optimistic local bump so the vote feels instant
-    const localCounts = { ...getCounts(emotion) };
-    localCounts[category] += 1;
-    votes[emotion] = localCounts;
-    votedThisSession.add(emotion);
-    showNextEmotion();
-    renderDashboard();
-
-    // Merge with the latest shared tally before writing, so two people
-    // voting at nearly the same moment don't erase each other's vote
-    const fetched = await fetchShared();
-    const latest = fetched.ok ? fetched.data : { ...votes };
-    const latestCounts = latest[emotion] || emptyCounts();
-    latestCounts[category] += 1;
-    latest[emotion] = latestCounts;
-
-    const saved = await saveShared(latest);
-    if (saved) {
-      votes = latest;
-      consecutiveFetchFailures = 0;
-      setSyncNote('Synced ' + new Date().toLocaleTimeString());
-    } else {
-      setSyncNote('Vote saved locally — retrying sync…', true);
-    }
-    renderDashboard();
-    syncing = false;
-    setChoicesEnabled(true);
-  }
-
-  function restartSession() {
-    votedThisSession = new Set();
-    showNextEmotion();
-  }
-
-  async function resetAll() {
-    const entered = prompt("Enter admin password to reset all votes:");
-    if (entered === null) return; // cancelled
-    if (entered !== "admin") {
-      alert("Incorrect password. Reset cancelled.");
-      return;
-    }
-    votes = {};
-    votedThisSession = new Set();
-    await saveShared({});
-    showNextEmotion();
-    renderDashboard();
-    setSyncNote('Reset ' + new Date().toLocaleTimeString());
-  }
-
   function renderDashboard() {
     const buckets = { Positive: [], Negative: [], Neutral: [] };
-
-    for (const emotion of Object.keys(votes)) {
+    for (const emotion of Object.keys(votes || {})) {
       const counts = getCounts(emotion);
       const result = getMajority(counts);
       if (!result) continue;
@@ -523,36 +396,51 @@
     }
   }
 
-  // Explicitly pulls the freshest shared data BEFORE rendering, rather than
-  // trusting whatever happens to already be in memory. This is what runs
-  // when the admin dashboard is opened, and on manual refresh.
-  async function syncThenRender() {
-    setSyncNote('Syncing latest results…');
-    const refreshBtn = document.getElementById('refreshBtn');
-    if (refreshBtn) refreshBtn.disabled = true;
+  async function classify(category) {
+    if (!currentEmotion || busy || !firebaseReady) return;
+    const emotion = currentEmotion;
+    busy = true;
+    setChoicesEnabled(false);
 
-    const fetched = await fetchShared();
-    if (fetched.ok) {
-      votes = fetched.data;
-      consecutiveFetchFailures = 0;
-      setSyncNote('Synced ' + new Date().toLocaleTimeString());
-    } else {
-      consecutiveFetchFailures += 1;
-      // Only ever treat this as "genuinely empty" on the very first load,
-      // where there's no prior data to protect. Otherwise keep showing
-      // whatever we already had rather than blanking the dashboard.
-      if (Object.keys(votes).length === 0) {
-        votes = {};
-      }
-      setSyncNote('Could not reach shared storage — showing last known results', true);
+    votedThisSession.add(emotion);
+    showNextEmotion();
+
+    try {
+      // Atomic increment — Firebase resolves simultaneous votes correctly,
+      // so two people voting on the same emotion at once both count.
+      await runTransaction(ref(db, `votes/${emotion}/${category}`), current => (current || 0) + 1);
+      setSyncNote('Vote saved ' + new Date().toLocaleTimeString(), 'ok');
+    } catch (e) {
+      console.error('Vote failed to save', e);
+      setSyncNote('Could not save your vote — check your connection', 'warn');
     }
-    renderDashboard();
 
-    if (refreshBtn) refreshBtn.disabled = false;
+    busy = false;
+    setChoicesEnabled(true);
   }
 
-  function manualRefresh() {
-    syncThenRender();
+  function restartSession() {
+    votedThisSession = new Set();
+    showNextEmotion();
+  }
+
+  async function resetAll() {
+    const entered = prompt("Enter admin password to reset all votes:");
+    if (entered === null) return;
+    if (entered !== "admin") {
+      alert("Incorrect password. Reset cancelled.");
+      return;
+    }
+    if (!firebaseReady) return;
+    try {
+      await set(ref(db, 'votes'), null);
+      votedThisSession = new Set();
+      showNextEmotion();
+      setSyncNote('Reset ' + new Date().toLocaleTimeString(), 'ok');
+    } catch (e) {
+      console.error(e);
+      setSyncNote('Reset failed — check your connection', 'warn');
+    }
   }
 
   function toggleView() {
@@ -569,39 +457,36 @@
       admin.style.display = 'block';
       sorter.style.display = 'none';
       btn.textContent = 'Back to sorting';
-      syncThenRender(); // fetch latest FIRST, then classify/render
-    }
-  }
-
-  // Poll shared storage in the background so every open tab/browser stays
-  // in sync live. Never blanks existing data on a failed read.
-  async function pollShared() {
-    const fetched = await fetchShared();
-    if (!fetched.ok) {
-      consecutiveFetchFailures += 1;
-      if (consecutiveFetchFailures >= 3) {
-        setSyncNote('Having trouble syncing — will keep retrying', true);
-      }
-      return; // leave existing votes/display untouched
-    }
-    consecutiveFetchFailures = 0;
-    const remote = fetched.data;
-    if (JSON.stringify(remote) !== JSON.stringify(votes)) {
-      votes = remote;
       renderDashboard();
     }
-    setSyncNote('Synced ' + new Date().toLocaleTimeString());
   }
 
+  // Expose handlers used by inline onclick= attributes (needed because
+  // this script runs as an ES module, which doesn't leak to the
+  // global scope by default).
+  window.classify = classify;
+  window.toggleView = toggleView;
+  window.resetAll = resetAll;
+  window.restartSession = restartSession;
+
   // init
-  (async function init() {
-    const fetched = await fetchShared();
-    votes = fetched.ok ? fetched.data : {};
+  if (!firebaseReady) {
+    setSyncNote('Firebase config missing or invalid — edit firebaseConfig in the script', 'warn');
+    document.getElementById('emotionWord').textContent = 'Setup needed';
+  } else {
     showNextEmotion();
-    renderDashboard();
-    setSyncNote(fetched.ok ? 'Synced ' + new Date().toLocaleTimeString() : 'Starting fresh — no votes yet', false);
-    setInterval(pollShared, POLL_MS);
-  })();
+    // Live listener: fires immediately with current data, then again on
+    // every change from any user, anywhere — this is what makes the
+    // dashboard update live without polling.
+    onValue(ref(db, 'votes'), (snapshot) => {
+      votes = snapshot.val() || {};
+      renderDashboard();
+      setSyncNote('Live · updated ' + new Date().toLocaleTimeString(), 'ok');
+    }, (error) => {
+      console.error('Live sync error', error);
+      setSyncNote('Lost connection to live data — retrying…', 'warn');
+    });
+  }
 </script>
 
 </body>
