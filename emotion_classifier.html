@@ -310,6 +310,12 @@
   }
 
   function resetAll() {
+    const entered = prompt("Enter admin password to reset all classifications:");
+    if (entered === null) return; // cancelled
+    if (entered !== "admin") {
+      alert("Incorrect password. Reset cancelled.");
+      return;
+    }
     classifications = {};
     restartQueue();
     renderDashboard();
